@@ -1,5 +1,7 @@
 # Real-Time Intelligence for Transport Analysis
 
+> **Credit:** This project is based on the original work by [Ajit Ananth](https://github.com/ajananth) — [fabric-rti-transport-analysis](https://github.com/ajananth/fabric-rti-transport-analysis).
+
 A solution for monitoring and analysing public transport networks, providing live hazard detection, route anomaly identification, and automated alerting for enhanced transportation safety and operational efficiency.
 
 ## 🚌 Objectives
