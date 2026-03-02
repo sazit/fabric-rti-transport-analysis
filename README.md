@@ -4,7 +4,7 @@
 >
 > **Ferry tracking** is based on the approach by [Francesco Fava](https://medium.com/@francescogiorgio.fava) — [Real-Time Ferry Tracking in Sydney Harbour with Microsoft Fabric](https://medium.com/@francescogiorgio.fava/real-time-ferry-tracking-in-sydney-harbour-with-microsoft-fabric-07bb2784ca50).
 >
-> **Sydney Trains tracking** is an original addition by [Sajit Gunawardane](https://github.com/sazit).
+> **Sydney Trains tracking** is an original addition by [Sajit Gurubacharya](https://github.com/sazit).
 
 A solution for monitoring and analysing Sydney's public transport networks — **buses**, **ferries**, and **trains** — providing live hazard detection, route anomaly identification, and automated alerting for enhanced transportation safety and operational efficiency.
 
@@ -109,7 +109,7 @@ assets/
 │   └── ingesthz.ipynb
 ├── ferry/          # Ferry position ingestion (based on Francesco Fava)
 │   └── ingest_ferry.ipynb
-└── trains/         # Sydney Trains position ingestion (Sajit Gunawardane)
+└── trains/         # Sydney Trains position ingestion (Sajit Gurubacharya)
     └── ingest_trains.ipynb
 
 deploy_fabric.ps1   # Deploy bus/hazard components
