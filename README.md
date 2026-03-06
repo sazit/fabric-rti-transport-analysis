@@ -85,12 +85,49 @@ All data is sourced from the [Transport NSW Open Data API](https://opendata.tran
 | Ferries | v1 | name, lat/long, destination |
 | Trains | **v2** | id, route, lat/long, speed, bearing, direction, stop, movement status |
 
+## Development Workflow
+
+This repo uses **Fabric Git Integration** for bidirectional sync between the Fabric workspace and GitHub:
+
+```
+┌─────────────────────┐         ┌─────────────────────┐         ┌──────────────┐
+│   Fabric Portal     │◄───────►│   GitHub Repo       │◄───────►│  VS Code     │
+│   RTI-Transport     │  sync   │   main branch       │  pull/  │  Local Dev   │
+│   workspace         │         │   /                  │  push   │              │
+└─────────────────────┘         └─────────────────────┘         └──────────────┘
+```
+
+- **Fabric → Git**: Changes made in the Fabric portal (edit a notebook, update a dashboard) are committed to GitHub
+- **Git → Fabric**: Pushes to `main` from VS Code sync back into the workspace
+- **Local editing**: Clone the repo, edit with VS Code + Copilot, push to GitHub, Fabric auto-syncs
+
+### Repo Structure
+
+```
+/                            ← Fabric Git Integration root (synced items)
+├── *.Eventhouse/            ← Eventhouse definitions
+├── *.Eventstream/           ← Eventstream configs
+├── *.Notebook/              ← Spark notebooks
+├── *.KQLDashboard/          ← KQL dashboard layouts + queries
+├── *.Report/                ← Power BI reports
+├── *.DataAgent/             ← Fabric Data Agent config
+├── README.md                ← This file
+└── _deploy/                 ← Legacy deploy scripts (not synced by Fabric)
+    ├── deploy_fabric.ps1
+    ├── deploy_ferry.ps1
+    ├── deploy_trains.ps1
+    ├── assets/              ← Original notebook .ipynb files
+    ├── docs/                ← Step-by-step setup guides
+    └── images/              ← Architecture diagrams + screenshots
+```
+
 ## Setup
 
 1. Register for a [Transport NSW API key](https://opendata.transport.nsw.gov.au/)
 2. Ensure a Fabric capacity is available (any F SKU)
 3. Configure each notebook with your API key and Eventstream connection string
+4. Connect the Fabric workspace to this repo via **Workspace Settings → Git Integration**
 
 ## Legacy Deploy Scripts
 
-The original PowerShell deployment scripts that created the workspace items via the Fabric REST API are preserved in [`_deploy/`](_deploy/).
+The original PowerShell deployment scripts that created the workspace items via the Fabric REST API are preserved in [`_deploy/`](_deploy/). These are superseded by Git Integration — the actual Fabric item definitions now live in the repo root.
