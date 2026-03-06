@@ -99,6 +99,7 @@ line_name = case(
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -112,6 +113,8 @@ line_name = case(
     "Other"
 )
 ```
+
+> **Note:** Trains with an empty `route_id` are non-revenue/maintenance movements and are filtered out of all dashboard queries with `| where isnotempty(route_id)`.
 
 When configuring map or chart colors in the visual, set category colors to:
 
@@ -131,6 +134,7 @@ When configuring map or chart colors in the visual, set category colors to:
 | South Coast | `#005AA3` |
 | Sthn Highlands | `#005AA3` |
 | Intercity | `#6F818E` |
+| T6 Carlingford | `#8D5B2D` |
 | Replacement Svc | `#999999` |
 | Station | `#333333` |
 
@@ -167,6 +171,7 @@ This is the main tile. It shows coloured train dots and dark station markers on 
 // --- Train positions enriched with stop name, line, speed, delay ---
 let train_data = Trains
 | where todatetime(timestamp) > ago(2m)
+| where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend is_replacement = route_id startswith "RTTA"
 | where ('ShowReplacement' == "Yes" or is_replacement == false)
@@ -176,6 +181,7 @@ let train_data = Trains
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -276,6 +282,7 @@ union enriched, stations
 ```kql
 Trains
 | where todatetime(timestamp) > ago(2m)
+| where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend is_replacement = route_id startswith "RTTA"
 | where ('ShowReplacement' == "Yes" or is_replacement == false)
@@ -285,6 +292,7 @@ Trains
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -326,6 +334,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -393,6 +402,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -452,6 +462,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",

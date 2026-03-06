@@ -78,6 +78,7 @@ Trains
     "Tile 2 — Live Train Map (trains only)": """
 Trains
 | where todatetime(timestamp) > ago(5m)
+| where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend line_name = case(
     route_id startswith "NSN", "T1 North Shore",
@@ -85,6 +86,7 @@ Trains
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -128,6 +130,7 @@ TripUpdates
     "Tile 3 — Active Trains by Line": """
 Trains
 | where todatetime(timestamp) > ago(5m)
+| where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend line_name = case(
     route_id startswith "NSN", "T1 North Shore",
@@ -135,6 +138,7 @@ Trains
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -162,6 +166,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -195,6 +200,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -223,6 +229,7 @@ TripUpdates
     route_id startswith "IWL", "T2 Inner West",
     route_id startswith "CMB" or route_id startswith "T3", "T3 Bankstown",
     route_id startswith "ESI", "T4 Eastern Suburbs",
+    route_id startswith "T6", "T6 Carlingford",
     route_id startswith "OLY", "T7 Olympic Park",
     route_id startswith "APS", "T8 Airport",
     route_id startswith "NTH", "T9 Northern",
@@ -251,6 +258,7 @@ Trains
     "Tile 8 — Network Health": """
 let total = Trains
 | where todatetime(timestamp) > ago(5m)
+| where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | count
 | project Metric = "Active Trains", Value = tolong(Count);
