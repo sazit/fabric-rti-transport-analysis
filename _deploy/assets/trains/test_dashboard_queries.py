@@ -71,13 +71,13 @@ QUERIES = {
 Trains
 | summarize LatestData = max(todatetime(timestamp))
 | project
-    DataAsOf = format_datetime(LatestData, 'dd MMM yyyy HH:mm:ss'),
-    AgeSeconds = datetime_diff('second', now(), LatestData)
+    DataAsOf = format_datetime(LatestData, 'yyyy-MM-dd HH:mm:ss'),
+    AgeSeconds = datetime_diff('second', datetime_add('hour', 11, now()), LatestData)
 """,
 
     "Tile 2 — Live Train Map (trains only)": """
 Trains
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend line_name = case(
@@ -121,7 +121,7 @@ StopsReference
 
     "Tile 2 — TripUpdates Join": """
 TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | summarize arg_min(toint(stop_sequence), *) by trip_id
 | project trip_id, stop_id, arrival_delay, departure_delay
 | take 10
@@ -129,7 +129,7 @@ TripUpdates
 
     "Tile 3 — Active Trains by Line": """
 Trains
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend line_name = case(
@@ -157,7 +157,7 @@ Trains
 
     "Tile 4 — Delayed Trains": """
 TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where toint(arrival_delay) > 60
 | summarize arg_max(todatetime(timestamp), *) by trip_id, stop_id
 | extend line_name = case(
@@ -191,7 +191,7 @@ let station_stops = StopsReference
 | where stop_name has "Central"
 | project stop_id;
 TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where stop_id in (station_stops)
 | summarize arg_max(todatetime(timestamp), *) by trip_id, stop_id
 | extend line_name = case(
@@ -221,7 +221,7 @@ TripUpdates
 
     "Tile 6 — Avg Delay by Line": """
 TripUpdates
-| where todatetime(timestamp) > ago(30m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(30m))
 | where toint(arrival_delay) > 0
 | extend line_name = case(
     route_id startswith "NSN", "T1 North Shore",
@@ -249,7 +249,7 @@ TripUpdates
 
     "Tile 7 — Train Count Over Time": """
 Trains
-| where todatetime(timestamp) > ago(1h)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(1h))
 | extend ts = bin(todatetime(timestamp), 1m)
 | summarize ActiveTrains = dcount(train_id) by ts
 | order by ts asc
@@ -257,18 +257,18 @@ Trains
 
     "Tile 8 — Network Health": """
 let total = Trains
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | count
 | project Metric = "Active Trains", Value = tolong(Count);
 let delayed = TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where toint(arrival_delay) > 120
 | summarize dcount(trip_id)
 | project Metric = "Delayed >2min", Value = tolong(dcount_trip_id);
 let on_time_pct = TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | summarize total_updates = count(), on_time = countif(toint(arrival_delay) <= 60)
 | project Metric = "On-Time Pct", Value = tolong(round(toreal(on_time) / toreal(total_updates) * 100, 0));
 union total, delayed, on_time_pct

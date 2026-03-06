@@ -15,6 +15,8 @@ Build a comprehensive real-time intelligence dashboard for Sydney Trains in Micr
 
 > **Important:** The vehicle position table is named `Trains` in the Eventhouse (not `SydneyTrains`). All queries below use `Trains`.
 
+> **Timezone:** The ingestion notebooks store timestamps in **Sydney local time** (AEST = UTC+11). KQL's `now()` and `ago()` use UTC, so all time-window filters use `datetime_add("hour", 11, ago(...))` to align correctly. Without this adjustment, queries would pull ~11 hours of stale data instead of the intended window.
+
 ---
 
 ## Step 1: Create the Dashboard
@@ -149,8 +151,8 @@ When configuring map or chart colors in the visual, set category colors to:
 Trains
 | summarize LatestData = max(todatetime(timestamp))
 | project
-    DataAsOf = format_datetime(LatestData, 'dd MMM yyyy HH:mm:ss'),
-    AgeSeconds = datetime_diff('second', now(), LatestData)
+    DataAsOf = format_datetime(LatestData, 'yyyy-MM-dd HH:mm:ss'),
+    AgeSeconds = datetime_diff('second', datetime_add('hour', 11, now()), LatestData)
 ```
 
 **Configuration:**
@@ -170,7 +172,7 @@ This is the main tile. It shows coloured train dots and dark station markers on 
 ```kql
 // --- Train positions enriched with stop name, line, speed, delay ---
 let train_data = Trains
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend is_replacement = route_id startswith "RTTA"
@@ -197,7 +199,7 @@ let train_data = Trains
 | extend speed_kmh = round(toreal(train_speed) * 3.6, 1);
 // --- Join next-stop info from TripUpdates ---
 let trip_delays = TripUpdates
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | summarize arg_min(toint(stop_sequence), *) by trip_id
 | project trip_id,
     next_stop_id = stop_id,
@@ -281,7 +283,7 @@ union enriched, stations
 **Query:**
 ```kql
 Trains
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | where isnotempty(route_id)
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | extend is_replacement = route_id startswith "RTTA"
@@ -325,7 +327,7 @@ Trains
 **Query:**
 ```kql
 TripUpdates
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | where toint(arrival_delay) > 60
 | summarize arg_max(todatetime(timestamp), *) by trip_id, stop_id
 | extend line_name = case(
@@ -382,18 +384,28 @@ Shows next departures from the selected station. This is the most complex query 
 let station_stops = StopsReference
 | where stop_name has 'SelectedStation'
 | project stop_id;
-// Find trip destinations (last stop in each trip)
+// Find trip destinations (last stop in each trip) — resolve platform names to parent station
 let trip_destinations = StopTimesReference
 | summarize max_seq = max(toint(stop_sequence)) by trip_id
 | join kind=inner (
     StopTimesReference | project trip_id, stop_sequence, dest_stop_id = stop_id
 ) on trip_id
 | where toint(stop_sequence) == max_seq
-| join kind=leftouter (StopsReference | project stop_id, destination = stop_name) on $left.dest_stop_id == $right.stop_id
-| project trip_id, destination;
+| join kind=leftouter (
+    StopsReference
+    | where location_type == "1" or isempty(parent_station)
+    | project stop_id, destination = stop_name
+) on $left.dest_stop_id == $right.stop_id
+| join kind=leftouter (
+    StopsReference
+    | where location_type == "0" and isnotempty(parent_station)
+    | project dest_stop_id = stop_id, parent_station
+    | join kind=inner (StopsReference | project stop_id, parent_name = stop_name) on $left.parent_station == $right.stop_id
+) on dest_stop_id
+| project trip_id, destination = coalesce(destination, parent_name, "Unknown");
 // Get upcoming arrivals at the selected station from TripUpdates
 TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where stop_id in (station_stops)
 | summarize arg_max(todatetime(timestamp), *) by trip_id, stop_id
 | extend line_name = case(
@@ -426,18 +438,18 @@ TripUpdates
 | project
     Line = line_name,
     Destination = coalesce(destination, ""),
-    Due = arrival_time,
+    Platform = extract("Platform (\\d+)", 1, platform),
     Delay = delay_mins,
     Status = status_label,
     schedule_relationship
 | where schedule_relationship != "SKIPPED"
 | project-away schedule_relationship
-| order by Due asc
+| order by Line asc, Delay desc
 | take 15
 ```
 
 **Configuration:**
-- **Columns:** Line, Destination, Due, Delay, Status
+- **Columns:** Line, Destination, Platform, Delay, Status
 - **Conditional formatting on Status:**
   - Green background: "On time"
   - Amber background: contains "+X min" (≤5)
@@ -454,7 +466,7 @@ TripUpdates
 **Query:**
 ```kql
 TripUpdates
-| where todatetime(timestamp) > ago(30m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(30m))
 | where toint(arrival_delay) > 0
 | extend line_name = case(
     route_id startswith "NSN", "T1 North Shore",
@@ -501,7 +513,7 @@ TripUpdates
 **Query:**
 ```kql
 Trains
-| where todatetime(timestamp) > ago(1h)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(1h))
 | extend ts = bin(todatetime(timestamp), 1m)
 | summarize ActiveTrains = dcount(train_id) by ts
 | order by ts asc
@@ -522,22 +534,22 @@ Trains
 **Query:**
 ```kql
 let total = Trains
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | summarize arg_max(todatetime(timestamp), *) by train_id
 | count
 | project Metric = "Active Trains", Value = tolong(Count);
 let delayed = TripUpdates
-| where todatetime(timestamp) > ago(2m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(2m))
 | where toint(arrival_delay) > 120
 | summarize dcount(trip_id)
 | project Metric = "Delayed (>2min)", Value = tolong(dcount_trip_id);
 let avg_delay = TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | where toint(arrival_delay) > 0
 | summarize avg(toreal(arrival_delay))
 | project Metric = "Avg Delay (sec)", Value = tolong(avg_arrival_delay);
 let on_time_pct = TripUpdates
-| where todatetime(timestamp) > ago(5m)
+| where todatetime(timestamp) > datetime_add("hour", 11, ago(5m))
 | summarize
     total_updates = count(),
     on_time = countif(toint(arrival_delay) <= 60)
@@ -598,12 +610,15 @@ If the map visual doesn't support per-row sizing via `marker_size`, you can diff
 
 ### Departure board shows no data?
 Check that:
-1. `TripUpdates` has recent data: `TripUpdates | where todatetime(timestamp) > ago(2m) | count`
+1. `TripUpdates` has recent data: `TripUpdates | where todatetime(timestamp) > datetime_add("hour", 11, ago(5m)) | count`
 2. The selected station has child stops: `StopsReference | where stop_name has "Central" | project stop_id, stop_name, location_type`
-3. There are trip updates for those stops: `TripUpdates | where stop_id in (StopsReference | where stop_name has "Central" | project stop_id) | count`
+3. There are trip updates for those stops: `TripUpdates | where todatetime(timestamp) > datetime_add("hour", 11, ago(5m)) | where stop_id in (StopsReference | where stop_name has "Central" | project stop_id) | count`
 
 ### Parameter not filtering?
-Parameters are referenced in queries using single quotes: `'ShowReplacement'`, `'SelectedStation'`. Make sure the variable name matches exactly (case-sensitive).
+Parameters are referenced in queries using single quotes: `'ShowReplacement'`, `'SelectedStation'`. Make sure the variable name matches exactly (case-sensitive). The dashboard engine substitutes the parameter value in place of the variable name.
+
+### Data seems stale or counts are too high?
+Timestamps are stored in **Sydney local time** (AEST = UTC+11). All `ago()` calls must use `datetime_add("hour", 11, ago(...))` to filter correctly. Without this, queries pull ~11 hours of data instead of the intended window.
 
 ### Speed shows 0 for many trains?
 `train_speed` from GTFS is often 0 when the train is stationary. This is correct — it only reports non-zero speed when the train is moving. Trains with `current_status == "STOPPED_AT"` will typically show 0 km/h.

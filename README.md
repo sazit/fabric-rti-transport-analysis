@@ -69,10 +69,53 @@ This repo is synced with the **RTI-Transport** Fabric workspace via Git Integrat
 - **HazardsAnalysis** — hazard proximity detection (20km radius), impacted buses
 - **FerryDashboard** — live ferry positions across Sydney Harbour
 - **SydneyTrainsAnalysis** — train line performance, speed, stationary detection
+- **Sydney Trains Enriched** — enriched KQL dashboard with colour-coded lines, departure board, delay analysis (see [Dashboard Build Guide](_deploy/assets/trains/DASHBOARD_GUIDE.md))
 - **Sydney Trains Live Report** — Power BI report with semantic model
 
 ### AI
 - **Train Master Agent** — Fabric Data Agent for natural language queries over train data
+
+## Sydney Trains Enriched Dashboard
+
+A real-time KQL dashboard built on the **TrainAnalysis** Eventhouse, enriched with GTFS reference data for station names, destinations, and line colour-coding.
+
+### Tiles
+
+| # | Tile | Type | Description |
+|---|------|------|-------------|
+| 1 | Data Freshness | Stat | Last data timestamp and age in seconds |
+| 2 | Live Train Map | Map | Colour-coded train dots + station markers with speed, next stop, and delay on tooltip |
+| 3 | Active Trains by Line | Bar chart | Train count per line (T1–T9, Intercity, etc.) |
+| 4 | Delayed Trains | Table | Trains with >1 min delay, sorted by severity |
+| 5 | Departure Board | Table | Next departures from a selected station with destination, platform, and delay status |
+| 6 | Avg Delay by Line | Bar chart | Average and max delay per line (last 30 min) |
+| 7 | Train Count Over Time | Time chart | Active train count per minute (last hour) |
+| 8 | Network Health | Multi-stat | Active trains, delayed count, on-time percentage |
+
+### Parameters
+
+- **ShowReplacement** — toggle replacement bus services on/off
+- **ShowStations** — toggle station markers on the map
+- **SelectedStation** — pick a station for the departure board (30 major stations)
+
+### Reference Data
+
+The dashboard joins live GTFS-RT feeds against three reference tables loaded from the [Transport NSW GTFS static bundle](https://opendata.transport.nsw.gov.au/):
+
+| Table | Rows | Purpose |
+|-------|------|---------|
+| `StopsReference` | ~1,214 | Station/platform names, coordinates, parent-child relationships |
+| `RoutesReference` | ~137 | Route-to-line mapping |
+| `StopTimesReference` | ~1.19M | Scheduled stop times, trip destinations |
+
+### Timezone Note
+
+Ingestion notebooks store timestamps in **Sydney local time** (AEST = UTC+11). All KQL `ago()` filters use `datetime_add("hour", 11, ago(...))` to align with UTC-based `now()`. See the [Dashboard Build Guide](_deploy/assets/trains/DASHBOARD_GUIDE.md) for full queries and build instructions.
+
+### Build Guide & Tests
+
+- **[Dashboard Build Guide](_deploy/assets/trains/DASHBOARD_GUIDE.md)** — step-by-step instructions with every KQL query, parameter definition, colour mapping, and layout
+- **[Query Test Script](_deploy/assets/trains/test_dashboard_queries.py)** — validates all 13 dashboard queries against the Eventhouse via Azure CLI auth
 
 ## Data Sources
 
